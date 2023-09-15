@@ -1,39 +1,20 @@
+import { stringify } from 'csv/sync';
+import { IData, SarimaConfig } from '../types';
 const ARIMA = require('arima');
 const fs = require('fs');
-import { generate, parse, transform, stringify } from 'csv/sync';
 
-console.log('Hello world!');
-
-export interface IData {
-  [key: string]: string | number | boolean;
-}
-
-export type SarimaConfig<T> = {
-  [key: string]: T;
-};
-
-const RAW_DATA = JSON.parse(fs.readFileSync('./revenues-qty_ordered.json', 'utf8'));
-
-const KPI = 'revenues';
-
-const GRID_VALUES: SarimaConfig<number[]> = {
-  p: [0, 1, 2],
-  d: [0, 1],
-  q: [0, 1, 2],
-  P: [0, 1, 2],
-  D: [0, 1],
-  Q: [0, 1, 2],
-  s: [90],
-};
-
-const main = () => {
-  const kpiData: number[] = mapArrayFromRawData(RAW_DATA, KPI);
+export const makeGridSearch = (
+  rawData: IData[],
+  kpi: string,
+  gridValues: SarimaConfig<number[]>
+) => {
+  const kpiData: number[] = mapArrayFromRawData(rawData, kpi);
 
   const [trainingData, validationData] = splitData(kpiData);
 
-  const [bestConfiguration, bestRMSE] = getBestConfig(GRID_VALUES, trainingData, validationData);
+  const [bestConfiguration, bestRMSE] = getBestConfig(gridValues, trainingData, validationData);
 
-  writeResultsToFile(bestConfiguration, bestRMSE);
+  writeResultsToFile(kpi, bestConfiguration, bestRMSE, gridValues);
 };
 
 const splitData = (data: number[]) => {
@@ -83,15 +64,13 @@ const getBestConfig = (
   return [bestConfiguration, bestRMSE];
 };
 
-const computeSARIMA = (
-  config: { [key: string]: number },
+export const computeSARIMA = (
+  config: { [key: string]: number | number[] | boolean },
   trainingData: number[],
   pointsAmt: number
 ) => {
-  // const autoArima = { auto: true, s: 365, verbose: true };
-  // const sarima = { p: 3, d: 0, q: 2, P: 0, D: 0, Q: 0, s: 30 };
   const arima = new ARIMA(config).train(trainingData);
-  const [pred, error] = arima.predict(pointsAmt);
+  const [pred] = arima.predict(pointsAmt);
   return pred;
 };
 
@@ -114,16 +93,19 @@ const calculateRMSE = (actualValues: number[], predictedValues: number[]): numbe
   return rmse;
 };
 
-const writeResultsToFile = (bestConfig: any, bestRMSE: number) => {
-  const file = fs.readFileSync('./results.csv', 'utf8');
-  // const parsed = parse(file);
+const writeResultsToFile = (
+  kpi: string,
+  bestConfig: any,
+  bestRMSE: number,
+  gridValues: SarimaConfig<number[]>
+) => {
   const result = [];
 
   const configKeys = Object.keys(bestConfig);
   const bestConfigArr = configKeys.map(key => bestConfig[key]);
-  const gridValuesArr = configKeys.map(key => JSON.stringify(GRID_VALUES[key]));
+  const gridValuesArr = configKeys.map(key => JSON.stringify(gridValues[key]));
 
-  result.push(KPI);
+  result.push(kpi);
   result.push(...bestConfigArr);
   result.push(bestRMSE);
   result.push(...gridValuesArr);
@@ -134,31 +116,10 @@ const writeResultsToFile = (bestConfig: any, bestRMSE: number) => {
   });
 };
 
-const getNumOfForecastPoints = () => {
-  return 15;
-};
-
-const mapArrayFromRawData = (data: IData[], field: string) => {
+export const mapArrayFromRawData = (data: IData[], field: string) => {
   return (
     data?.map(
       (item: any) => (typeof item?.[field] === 'undefined' ? null : item?.[field]) // remove datapoints from display if no data
     ) || []
   );
 };
-
-main();
-
-const checkDates = () => {
-  let lastDate = 'none';
-  let lastDay = 0;
-  RAW_DATA.forEach((item: any, i: number) => {
-    if (!item?.date) console.log(lastDate);
-    const day = Number(item.date.split('-')[2]);
-
-    if (i === 0) return (lastDay = day);
-    if (day !== lastDay + 1) console.log(item.date);
-    lastDay = day;
-  });
-};
-
-// checkDates();

@@ -10,6 +10,6 @@
     "strict": true
   },
   "lib": ["es2015"],
-  "include": ["**/*"],
+  "include": ["src/*"],
   "exclude": ["dist"]
 }
