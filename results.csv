@@ -1,0 +1,3 @@
+kpi,best_config,null,null,null,null,null,null,best_rmse,grid_values,null,null,null,null,null,null,
+null,p,d,q,P,D,Q,s,null,p,d,q,P,D,Q,s,
+revenues,2,0,1,2,0,1,30,790.5745674126047,"[0,1,2]","[0,1]","[0,1,2]","[0,1,2]","[0,1]","[0,1,2]",[30]
